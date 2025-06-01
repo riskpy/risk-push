@@ -1,0 +1,38 @@
+# Conexion a la base de datos
+datasource:
+  serverName: serverName.com.py
+  port: 1521
+  serviceName: serviceName
+  user: user
+  password: password
+  maximumPoolSize: 50
+  minimumIdle: 5
+  idleTimeout: 30000
+  connectionTimeout: 10000
+
+# Configuración de servicios de mensajería push
+push:
+  - nombre: FCM-OTP
+    plataforma: FCM                      # Plataforma: FCM, HMS.
+    clasificacion: OTP                   # Clasificacion: OTP, AVISO, PROMOCION (u otros). Opcional
+    cantidadMaximaPorLote: 100           # Cantidad maxima de Push a enviar por lote. Opcional. Por defecto 100
+    modoEnvioLote: secuencial_espaciado  # Modo de envío: paralelo, paralelo_espaciado, secuencial_espaciado, secuencial_espaciado_async
+    intervaloEntreLotesMs: 1000          # Tiempo de espera entre lotes de Push a enviar (en milisegundos)
+    maximoIntentos: 3                    # Número máximo de intentos de envío permitidos de Push. Opcional. Por defecto 5
+    # Conexion al servicio de Firebase Cloud Messaging
+    firebase:
+      serviceAccountPath: ./path/a/firebase-service-account.json
+
+  - nombre: HUAWEI-AVISO
+    plataforma: HMS
+    clasificacion: AVISO
+    cantidadMaximaPorLote: 100
+    modoEnvioLote: secuencial_espaciado
+    intervaloEntreLotesMs: 10000
+    maximoIntentos: 5
+    # Conexion al servicio de Huawei Mobile Services
+    huawei:
+      appId: tu-app-id
+      appSecret: tu-app-secret
+      tokenUrl: https://oauth-login.cloud.huawei.com/oauth2/v3/token
+      apiUrl: https://push-api.cloud.huawei.com/v1/tu-app-id/messages:send

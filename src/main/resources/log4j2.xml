@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+<Appenders>
+    <!-- Consola: nivel DEBUG+ -->
+    <Console name="Console" target="SYSTEM_OUT">
+        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5p %X{servicio} [%X{contador}] [%X{idMensaje}] %c{1} - %msg%n"/>
+        <Filters>
+            <ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="DENY"/>
+        </Filters>
+    </Console>
+
+    <!-- Archivo general: solo INFO o superior -->
+    <RollingFile name="FileAppender"
+                 fileName="logs/risk-push.log"
+                 filePattern="logs/risk-push-%d{yyyy-MM-dd}-%i.log.gz">
+        <PatternLayout>
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %X{servicio} [%X{contador}] [%X{idMensaje}] %logger{36} - %msg%n</Pattern>
+        </PatternLayout>
+        <Filters>
+            <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+        </Filters>
+        <Policies>
+            <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+            <SizeBasedTriggeringPolicy size="300MB"/>
+        </Policies>
+        <DefaultRolloverStrategy max="7">
+            <Delete basePath="logs" maxDepth="1">
+                <IfFileName glob="risk-push-*.log.gz" />
+                <IfLastModified age="7d" />
+            </Delete>
+        </DefaultRolloverStrategy>
+    </RollingFile>
+
+    <!-- RoutingAppender para logs por servicio -->
+    <Routing name="ServicioRouting">
+        <Routes pattern="$${ctx:servicio}">
+            <!-- Route por defecto -->
+            <Route key="default" ref="IgnoreLogs"/>
+
+            <!-- Route dinámico por servicio -->
+            <Route>
+                <RollingFile name="ServicioLog"
+                             fileName="logs/risk-push-${ctx:servicio}.log"
+                             filePattern="logs/risk-push-${ctx:servicio}-%d{yyyy-MM-dd}-%i.log.gz">
+                    <PatternLayout>
+                        <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %X{servicio} [%X{contador}] [%X{idMensaje}] %logger{36} - %msg%n</Pattern>
+                    </PatternLayout>
+                    <Policies>
+                        <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                        <SizeBasedTriggeringPolicy size="300MB"/>
+                    </Policies>
+                    <DefaultRolloverStrategy max="7"/>
+                </RollingFile>
+            </Route>
+        </Routes>
+    </Routing>
+
+    <!-- Async para el general -->
+    <Async name="AsyncFile">
+        <AppenderRef ref="FileAppender"/>
+    </Async>
+
+    <!-- Async para Routing -->
+    <Async name="AsyncRouting">
+        <AppenderRef ref="ServicioRouting"/>
+    </Async>
+
+    <!-- Null para Routing con servicio 'default' -->
+    <Null name="IgnoreLogs"/>
+</Appenders>
+
+<Loggers>
+    <!-- Log específico para Hikari -->
+    <Logger name="com.zaxxer.hikari" level="warn" additivity="false">
+        <AppenderRef ref="Console"/>
+        <AppenderRef ref="AsyncFile"/>
+        <AppenderRef ref="AsyncRouting"/>
+    </Logger>
+
+    <!-- Log específico para Cloudhopper -->
+    <Logger name="com.cloudhopper.smpp" level="warn" additivity="false">
+        <AppenderRef ref="Console"/>
+        <AppenderRef ref="AsyncFile"/>
+        <AppenderRef ref="AsyncRouting"/>
+    </Logger>
+
+    <!-- Logger raíz -->
+    <Root level="debug">
+        <AppenderRef ref="Console"/>
+        <AppenderRef ref="AsyncFile"/>
+        <AppenderRef ref="AsyncRouting"/>
+    </Root>
+</Loggers>
+</Configuration>

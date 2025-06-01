@@ -1,0 +1,150 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>py.com.risk.push</groupId>
+  <artifactId>risk-push</artifactId>
+  <version>1.0.0</version>
+
+  <name>Risk Push Service</name>
+  <description>Envío de Push para el sistema Risk usando Firebase Cloud Messaging y uawei Mobile Services</description>
+
+  <dependencies>
+
+    <!-- SLF4J to Log4j2 bridge -->
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
+        <version>2.20.0</version>
+    </dependency>
+
+    <!-- Log4j2 core -->
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <version>2.20.0</version>
+    </dependency>
+
+    <!-- Log4j2 API -->
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-api</artifactId>
+        <version>2.20.0</version>
+    </dependency>
+
+    <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.17.0</version> <!-- o la versión más reciente compatible con Java 8 -->
+    </dependency>
+
+    <!-- Core: JSON Parser -->
+    <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>2.17.0</version>
+    </dependency>
+
+    <!-- Annotations (si usás anotaciones como @JsonProperty) -->
+    <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-annotations</artifactId>
+        <version>2.17.0</version>
+    </dependency>
+
+    <!-- Firebase Admin SDK -->
+    <dependency>
+        <groupId>com.google.firebase</groupId>
+        <artifactId>firebase-admin</artifactId>
+        <version>9.2.0</version> <!-- Última compatible con Java 8 -->
+    </dependency>
+
+    <dependency>
+        <groupId>com.google.auth</groupId>
+        <artifactId>google-auth-library-oauth2-http</artifactId>
+        <version>1.19.0</version> <!-- Compatible con firebase-admin 9.x y Java 8 -->
+    </dependency>
+
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>1.18.30</version> <!-- Compatible con Java 8 -->
+        <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.oracle.database.jdbc</groupId>
+      <artifactId>ojdbc8</artifactId>
+      <version>19.3.0.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+      <version>4.0.3</version> <!-- Para java 8 -->
+      <!-- <version>5.1.0</version> --> <!-- Para java 17 -->
+    </dependency>
+
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>1.29</version>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+
+    <finalName>risk-push</finalName>
+
+    <plugins>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+
+      <!-- Shade plugin para generar un uber-jar -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.1</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+        <filters>
+          <filter>
+            <artifact>*:*</artifact>
+            <excludes>
+              <exclude>META-INF/*.SF</exclude>
+              <exclude>META-INF/*.DSA</exclude>
+              <exclude>META-INF/*.RSA</exclude>
+            </excludes>
+          </filter>
+        </filters>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>py.com.risk.push.RiskPushApp</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+
+  </build>
+
+</project>
