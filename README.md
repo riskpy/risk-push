@@ -18,7 +18,7 @@ Este servicio permite el envío de mensajes push a dispositivos Android/iOS util
 
 ## 🧱 Requisitos
 
-- Java 8 o superior
+- Java 17 o superior
 - Maven 3.6+
 - Archivo de credenciales para Firebase (`.json`)
 - Acceso a la API de Huawei Push

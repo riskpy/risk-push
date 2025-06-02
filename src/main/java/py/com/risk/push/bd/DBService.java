@@ -172,21 +172,38 @@ public class DBService {
             ArrayDescriptor descriptor = ArrayDescriptor.createDescriptor("SYS.ODCINUMBERLIST", oraConn);
             ARRAY array = new ARRAY(descriptor, oraConn, ids);
 
+            String plsql = ""
+                + "DECLARE\n"
+                + "  v_dummy NUMBER;\n"
+                + "BEGIN\n"
+                + "  -- Intentar bloquear los registros\n"
+                + "  SELECT COUNT(*) INTO v_dummy\n"
+                + "    FROM t_notificaciones\n"
+                + "   WHERE id_notificacion IN (SELECT * FROM TABLE(?))\n"
+                + "   FOR UPDATE NOWAIT;\n"
+                + "\n"
+                + "  -- Si se logró bloquear, actualizar estado\n"
+                + "  UPDATE t_notificaciones\n"
+                + "     SET estado = ?\n"
+                + "   WHERE id_notificacion IN (SELECT * FROM TABLE(?));\n"
+                + "END;";
+
             // Ejecutar el UPDATE masivo
-            try (CallableStatement stmt = conn.prepareCall(
-                "BEGIN " +
-                "  UPDATE t_notificaciones " +
-                "     SET estado = ? " +
-                "   WHERE id_notificacion IN (SELECT * FROM TABLE(?));" +
-                "END;"
-            )) {
-                stmt.setString(1, PushMessage.Status.EN_PROCESO_ENVIO.getCode());
-                stmt.setArray(2, array);
+            try (CallableStatement stmt = conn.prepareCall(plsql)) {
+                stmt.setArray(1, array); // para el SELECT FOR UPDATE
+                stmt.setString(2, PushMessage.Status.EN_PROCESO_ENVIO.getCode()); // nuevo estado
+                stmt.setArray(3, array); // para el UPDATE
                 stmt.execute();
             }
 
+        } catch (SQLException e) {
+            if (e.getErrorCode() == 54) { // ORA-00054: recurso ocupado y NOWAIT especificado
+                logger.warn("No se pudo bloquear los registros para marcar mensajes como EN_PROCESO_ENVIO: están siendo usados por otro proceso.");
+            } else {
+                logger.error("Error al marcar mensajes como EN_PROCESO_ENVIO", e);
+            }
         } catch (Exception e) {
-            logger.error("Error al marcar mensajes como EN_PROCESO_ENVIO", e);
+            logger.error("Fallo inesperado en marcación de mensajes como EN_PROCESO_ENVIO", e);
         }
     }
 
