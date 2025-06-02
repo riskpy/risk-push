@@ -170,6 +170,7 @@ public class RiskPushApp {
 
                 if (!mensajes.isEmpty()) {
                     logger.info("Mensajes pendientes para enviar: [{}], Modo de envío: [{}]", mensajes.size(), modo);
+                    dbService.marcarMensajesComoEnProceso(mensajes);
                     sender.sendMessages(modo, mensajes);
                 } else {
                     logger.info("No se encontraron mensajes pendientes para enviar");

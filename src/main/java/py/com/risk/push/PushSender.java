@@ -170,7 +170,7 @@ public class PushSender {
 
         try {
             logger().info("Enviando mensaje push a token [{}]: {}", msg.getToken(), msg.getCuerpo());
-            dbService.updateMessageStatus(msg.getIdMensaje(), Status.EN_PROCESO_ENVIO, null, null, null);
+            //dbService.updateMessageStatus(msg.getIdMensaje(), Status.EN_PROCESO_ENVIO, null, null, null);
 
             Plataforma plataforma = msg.getPlataforma();
             PushClient client = pushClients.get(plataforma);

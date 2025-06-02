@@ -1,7 +1,11 @@
 package py.com.risk.push.bd;
 
+import oracle.sql.ARRAY;
+import oracle.sql.ArrayDescriptor;
+
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+
 import py.com.risk.push.config.DataSourceConfig;
 import py.com.risk.push.model.Plataforma;
 import py.com.risk.push.model.PushMessage;
@@ -141,6 +145,49 @@ public class DBService {
         }
 
         return lista;
+    }
+
+    /**
+     * Marca los mensajes recibidos como "En proceso de envío" de forma masiva.
+     *
+     * @param mensajes lista de mensajes que se están por enviar
+     */
+    public void marcarMensajesComoEnProceso(List<PushMessage> mensajes) {
+        if (mensajes == null || mensajes.isEmpty()) {
+            return;
+        }
+
+        logger.debug("Marcando {} mensajes como EN_PROCESO_ENVIO", mensajes.size());
+
+        try (Connection conn = dataSource.getConnection()) {
+            // Convertir a arreglo de BigDecimal
+            BigDecimal[] ids = mensajes.stream()
+                    .map(PushMessage::getIdMensaje)
+                    .toArray(BigDecimal[]::new);
+
+            // Desempaquetar la conexión real de Oracle
+            oracle.jdbc.OracleConnection oraConn = conn.unwrap(oracle.jdbc.OracleConnection.class);
+
+            // Crear el descriptor y el ARRAY
+            ArrayDescriptor descriptor = ArrayDescriptor.createDescriptor("SYS.ODCINUMBERLIST", oraConn);
+            ARRAY array = new ARRAY(descriptor, oraConn, ids);
+
+            // Ejecutar el UPDATE masivo
+            try (CallableStatement stmt = conn.prepareCall(
+                "BEGIN " +
+                "  UPDATE t_notificaciones " +
+                "     SET estado = ? " +
+                "   WHERE id_notificacion IN (SELECT * FROM TABLE(?));" +
+                "END;"
+            )) {
+                stmt.setString(1, PushMessage.Status.EN_PROCESO_ENVIO.getCode());
+                stmt.setArray(2, array);
+                stmt.execute();
+            }
+
+        } catch (Exception e) {
+            logger.error("Error al marcar mensajes como EN_PROCESO_ENVIO", e);
+        }
     }
 
     /**
