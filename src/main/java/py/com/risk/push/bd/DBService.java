@@ -55,6 +55,28 @@ public class DBService {
         " FETCH FIRST NVL(?, 100) ROWS ONLY";
 
     /**
+     * Consulta SQL para actualizar el estado de envío de notificaciones masivamente.
+     * Maneja lógica para verificar si puede actualizar los registros o están siendo usados por otro proceso.
+     */
+    private static final String QUERY_ACTUALIZAR_ESTADO_NOTIFICACIONES =
+        "DECLARE\n" + 
+        "  v_ids SYS.ODCINUMBERLIST := ?;\n" +
+        "  v_estado VARCHAR2(1) := ?;\n" +
+        "  v_dummy SYS.ODCINUMBERLIST;\n" +
+        "BEGIN\n" +
+        "  -- Intentar bloquear los registros\n" +
+        "  SELECT id_notificacion BULK COLLECT INTO v_dummy\n" +
+        "    FROM t_notificaciones\n" +
+        "   WHERE id_notificacion IN (SELECT * FROM TABLE(v_ids))\n" +
+        "     FOR UPDATE NOWAIT;\n" +
+        "\n" +
+        "  -- Actualizar estado si el bloqueo fue exitoso\n" +
+        "  UPDATE t_notificaciones\n" +
+        "     SET estado = v_estado\n" +
+        "   WHERE id_notificacion IN (SELECT * FROM TABLE(v_ids));\n" +
+        "END;";
+
+    /**
      * Consulta SQL para actualizar el estado de envío de una notificación.
      * Maneja lógica para incrementar intentos, marcar como rechazado, y registrar respuesta.
      */
@@ -108,7 +130,7 @@ public class DBService {
     }
 
     /**
-     * Recupera los mensajes pendientes de envío desde la base de datos.
+     * Recupera las notificaciones pendientes de envío desde la base de datos.
      *
      * @param plataforma código de la plataforma (FCM, HMS, etc.)
      * @param clasificacion clasificación opcional para filtrar categorías
@@ -148,16 +170,15 @@ public class DBService {
     }
 
     /**
-     * Marca los mensajes recibidos como "En proceso de envío" de forma masiva.
+     * Actualiza el estado de las notificaciones de forma masiva.
      *
-     * @param mensajes lista de mensajes que se están por enviar
+     * @param mensajes lista de notificaciones
+     * @param estado nuevo estado (P: pendiente, E: enviado, R: rechazado)
      */
-    public void marcarMensajesComoEnProceso(List<PushMessage> mensajes) {
-        if (mensajes == null || mensajes.isEmpty()) {
+    public void updateMessagesStatus(List<PushMessage> mensajes, Status estado) {
+        if (mensajes == null || mensajes.isEmpty())
             return;
-        }
-
-        logger.debug("Marcando {} mensajes como EN_PROCESO_ENVIO", mensajes.size());
+        logger.debug("Marcando [{}] mensajes como [{}]", mensajes.size(), estado);
 
         try (Connection conn = dataSource.getConnection()) {
             // Convertir a arreglo de BigDecimal
@@ -172,38 +193,21 @@ public class DBService {
             ArrayDescriptor descriptor = ArrayDescriptor.createDescriptor("SYS.ODCINUMBERLIST", oraConn);
             ARRAY array = new ARRAY(descriptor, oraConn, ids);
 
-            String plsql = ""
-                + "DECLARE\n"
-                + "  v_dummy NUMBER;\n"
-                + "BEGIN\n"
-                + "  -- Intentar bloquear los registros\n"
-                + "  SELECT COUNT(*) INTO v_dummy\n"
-                + "    FROM t_notificaciones\n"
-                + "   WHERE id_notificacion IN (SELECT * FROM TABLE(?))\n"
-                + "   FOR UPDATE NOWAIT;\n"
-                + "\n"
-                + "  -- Si se logró bloquear, actualizar estado\n"
-                + "  UPDATE t_notificaciones\n"
-                + "     SET estado = ?\n"
-                + "   WHERE id_notificacion IN (SELECT * FROM TABLE(?));\n"
-                + "END;";
-
-            // Ejecutar el UPDATE masivo
-            try (CallableStatement stmt = conn.prepareCall(plsql)) {
-                stmt.setArray(1, array); // para el SELECT FOR UPDATE
-                stmt.setString(2, PushMessage.Status.EN_PROCESO_ENVIO.getCode()); // nuevo estado
-                stmt.setArray(3, array); // para el UPDATE
+            // Ejecutar el bloque anónimo PL/SQL
+            try (CallableStatement stmt = conn.prepareCall(QUERY_ACTUALIZAR_ESTADO_NOTIFICACIONES)) {
+                stmt.setArray(1, array); // v_ids
+                stmt.setString(2, estado.getCode()); // v_estado
                 stmt.execute();
             }
 
         } catch (SQLException e) {
-            if (e.getErrorCode() == 54) { // ORA-00054: recurso ocupado y NOWAIT especificado
-                logger.warn("No se pudo bloquear los registros para marcar mensajes como EN_PROCESO_ENVIO: están siendo usados por otro proceso.");
+            if (e.getErrorCode() == 54) { // ORA-00054: recurso ocupado
+                logger.warn("No se pudo bloquear los registros para actualizar estado de mensajes: están siendo usados por otro proceso.");
             } else {
-                logger.error("Error al marcar mensajes como EN_PROCESO_ENVIO", e);
+                logger.error("Error al actualizar estado de mensajes", e);
             }
         } catch (Exception e) {
-            logger.error("Fallo inesperado en marcación de mensajes como EN_PROCESO_ENVIO", e);
+            logger.error("Fallo inesperado en actualización de estado de mensajes", e);
         }
     }
 

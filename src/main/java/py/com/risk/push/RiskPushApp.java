@@ -5,6 +5,7 @@ import py.com.risk.push.config.*;
 import py.com.risk.push.model.ModoEnvioLote;
 import py.com.risk.push.model.Plataforma;
 import py.com.risk.push.model.PushMessage;
+import py.com.risk.push.model.PushMessage.Status;
 import py.com.risk.push.util.ContextAwareThreadFactory;
 import py.com.risk.push.firebase.*;
 import py.com.risk.push.huawei.HuaweiHttpSender;
@@ -170,7 +171,7 @@ public class RiskPushApp {
 
                 if (!mensajes.isEmpty()) {
                     logger.info("Mensajes pendientes para enviar: [{}], Modo de envío: [{}]", mensajes.size(), modo);
-                    dbService.marcarMensajesComoEnProceso(mensajes);
+                    dbService.updateMessagesStatus(mensajes, Status.EN_PROCESO_ENVIO);
                     sender.sendMessages(modo, mensajes);
                 } else {
                     logger.info("No se encontraron mensajes pendientes para enviar");
