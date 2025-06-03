@@ -29,27 +29,27 @@
     <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-slf4j-impl</artifactId>
-        <version>2.20.0</version>
+        <version>2.23.1</version>
     </dependency>
 
     <!-- Log4j2 core -->
     <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-core</artifactId>
-        <version>2.20.0</version>
+        <version>2.23.1</version>
     </dependency>
 
     <!-- Log4j2 API -->
     <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-api</artifactId>
-        <version>2.20.0</version>
+        <version>2.23.1</version>
     </dependency>
 
     <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>2.17.0</version> <!-- o la versión más reciente compatible con Java 8 -->
+        <version>2.17.0</version>
     </dependency>
 
     <!-- Core: JSON Parser -->
@@ -70,31 +70,26 @@
     <dependency>
         <groupId>com.google.firebase</groupId>
         <artifactId>firebase-admin</artifactId>
-        <version>9.2.0</version> <!-- Última compatible con Java 8 -->
+        <version>9.3.0</version>
     </dependency>
 
     <dependency>
         <groupId>com.google.auth</groupId>
         <artifactId>google-auth-library-oauth2-http</artifactId>
-        <version>1.19.0</version> <!-- Compatible con firebase-admin 9.x y Java 8 -->
+        <version>1.22.0</version>
     </dependency>
 
     <dependency>
         <groupId>org.projectlombok</groupId>
         <artifactId>lombok</artifactId>
-        <version>1.18.30</version> <!-- Compatible con Java 8 -->
+        <version>1.18.30</version>
         <scope>provided</scope>
     </dependency>
 
-    <!-- <dependency>
-      <groupId>com.oracle.database.jdbc</groupId>
-      <artifactId>ojdbc8</artifactId>
-      <version>19.3.0.0</version>
-    </dependency> -->
     <dependency>
       <groupId>com.oracle.database.jdbc</groupId>
       <artifactId>ojdbc11</artifactId>
-      <version>21.7.0.0</version> <!-- o más reciente compatible -->
+      <version>23.2.0.0</version>
     </dependency>
 
     <dependency>
@@ -140,16 +135,16 @@
             </goals>
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
-        <filters>
-          <filter>
-            <artifact>*:*</artifact>
-            <excludes>
-              <exclude>META-INF/*.SF</exclude>
-              <exclude>META-INF/*.DSA</exclude>
-              <exclude>META-INF/*.RSA</exclude>
-            </excludes>
-          </filter>
-        </filters>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>py.com.risk.push.RiskPushApp</mainClass>
