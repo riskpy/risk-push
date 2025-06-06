@@ -1,5 +1,6 @@
 package py.com.risk.push.bd;
 
+import oracle.jdbc.OracleTypes;
 import oracle.sql.ARRAY;
 import oracle.sql.ArrayDescriptor;
 
@@ -18,7 +19,10 @@ import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Servicio de acceso a la base de datos para el manejo de notificaciones push.
@@ -62,18 +66,39 @@ public class DBService {
         "DECLARE\n" + 
         "  v_ids SYS.ODCINUMBERLIST := ?;\n" +
         "  v_estado VARCHAR2(1) := ?;\n" +
-        "  v_dummy SYS.ODCINUMBERLIST;\n" +
+        "  v_no_bloqueados SYS.ODCINUMBERLIST := SYS.ODCINUMBERLIST();\n" +
+        "  v_bloqueados SYS.ODCINUMBERLIST := SYS.ODCINUMBERLIST();\n" +
+        "  v_bloqueado number;\n" +
         "BEGIN\n" +
         "  -- Intentar bloquear los registros\n" +
-        "  SELECT id_notificacion BULK COLLECT INTO v_dummy\n" +
-        "    FROM t_notificaciones\n" +
-        "   WHERE id_notificacion IN (SELECT * FROM TABLE(v_ids))\n" +
-        "     FOR UPDATE NOWAIT;\n" +
+        "  FOR i IN 1 .. v_ids.COUNT LOOP\n" +
+        "    BEGIN\n" +
+        "      SELECT id_notificacion\n" +
+        "        INTO v_bloqueado\n" +
+        "        FROM t_notificaciones\n" +
+        "       WHERE id_notificacion = v_ids(i)\n" +
+        "         FOR UPDATE NOWAIT;\n" +
+        "\n" +
+        "      v_bloqueados.EXTEND;\n" +
+        "      v_bloqueados(v_bloqueados.COUNT) := v_bloqueado;\n" +
+        "    EXCEPTION\n" +
+        "      WHEN OTHERS THEN\n" +
+        "        IF SQLCODE = -54 THEN -- ORA-00054: recurso ocupado\n" +
+        "          v_no_bloqueados.EXTEND;\n" +
+        "          v_no_bloqueados(v_no_bloqueados.COUNT) := v_ids(i);\n" +
+        "        ELSE\n" +
+        "          RAISE;\n" +
+        "        END IF;\n" +
+        "    END;\n" +
+        "  END LOOP;\n" +
         "\n" +
         "  -- Actualizar estado si el bloqueo fue exitoso\n" +
         "  UPDATE t_notificaciones\n" +
         "     SET estado = v_estado\n" +
-        "   WHERE id_notificacion IN (SELECT * FROM TABLE(v_ids));\n" +
+        "   WHERE id_notificacion IN (SELECT * FROM TABLE(v_bloqueados));\n" +
+        "\n" +
+        "  -- Devolver los no bloqueados\n" +
+        "  ? := v_no_bloqueados;\n" +
         "END;";
 
     /**
@@ -197,7 +222,18 @@ public class DBService {
             try (CallableStatement stmt = conn.prepareCall(QUERY_ACTUALIZAR_ESTADO_NOTIFICACIONES)) {
                 stmt.setArray(1, array); // v_ids
                 stmt.setString(2, estado.getCode()); // v_estado
+                stmt.registerOutParameter(3, OracleTypes.ARRAY, "SYS.ODCINUMBERLIST");
                 stmt.execute();
+
+                ARRAY resultArray = (ARRAY) stmt.getArray(3);
+                if (resultArray != null) {
+                    BigDecimal[] notUpdatedIds = (BigDecimal[]) resultArray.getArray();
+                    Set<BigDecimal> noBloqueadosSet = new HashSet<>(Arrays.asList(notUpdatedIds));
+                    logger.debug("Mensajes no bloqueados: [{}]", noBloqueadosSet);
+
+                    // Excluir los no bloqueados de la lista original
+                    mensajes.removeIf(m -> noBloqueadosSet.contains(m.getIdMensaje()));
+                }
             }
 
         } catch (SQLException e) {
